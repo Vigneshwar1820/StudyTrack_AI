@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/stu_recom.css">
+    <title>My Recommendations | StudyTrack AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+</head>
+
+<body>
+
+<header>
+    <h1>📬 My Recommendations</h1>
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/input">New Analysis</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h2>📨 Recommendation History</h2>
+        <p style="color: #666; margin-bottom: 30px;">
+            View AI-generated recommendations and admin responses for your performance analyses.
+        </p>
+
+        {% if recommendations %}
+        <div class="recommendations-grid">
+            {% for rec in recommendations %}
+            <div class="recommendation-card {{ rec.status }}">
+                <div class="rec-header">
+                    <div>
+                        <div class="rec-title">
+                            🆔 {{ rec.student_id }}
+                            {% if rec.cluster_label == 'High Performer' %}
+                                <span class="badge high">{{ rec.cluster_label }}</span>
+                            {% elif rec.cluster_label == 'Average Performer' %}
+                                <span class="badge avg">{{ rec.cluster_label }}</span>
+                            {% else %}
+                                <span class="badge low">{{ rec.cluster_label }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="rec-date">📅 {{ rec.created_at[:16] }}</div>
+                    </div>
+                    <div>
+                        {% if rec.status == 'reviewed' %}
+                            <span class="badge reviewed">✅ Reviewed</span>
+                        {% elif rec.status == 'pending' %}
+                            <span class="badge pending">⏳ Pending</span>
+                        {% else %}
+                            <span class="badge needs_revision">🔄 Needs Revision</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="rec-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Predicted Score</div>
+                        <div class="detail-value">{{ "%.0f"|format(rec.predicted_score) }}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Performance</div>
+                        <div class="detail-value" style="font-size: 1em;">{{ rec.cluster_label }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value" style="font-size: 0.9em;">
+                            {% if rec.status == 'reviewed' %}
+                                ✅ Approved
+                            {% elif rec.status == 'pending' %}
+                                ⏳ Under Review
+                            {% else %}
+                                🔄 Revision
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-recommendations">
+                    <h4>🤖 AI Recommendations</h4>
+                    {% for recommendation in rec.recommendations_list %}
+                    <div class="recommendation-item">{{ recommendation }}</div>
+                    {% endfor %}
+                </div>
+
+                {% if rec.admin_response %}
+                <div class="admin-response">
+                    <h4>👨‍💼 Admin Response</h4>
+                    <p>{{ rec.admin_response }}</p>
+                    {% if rec.responded_at %}
+                    <p style="opacity: 0.9; font-size: 0.9em; margin-top: 15px;">
+                        📅 Responded on: {{ rec.responded_at[:16] }}
+                    </p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="background: #fef3c7; color: #92400e; padding: 15px; border-radius: 8px; text-align: center;">
+                    ⏳ Waiting for admin review...
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            <div class="empty-icon">📭</div>
+            <p>No recommendations yet.</p>
+            <p style="margin-top: 10px;">
+                <a href="/input">Start your first analysis →</a>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+</body>
+</html>

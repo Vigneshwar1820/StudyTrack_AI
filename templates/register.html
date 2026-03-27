@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/register.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - StudyTrack AI</title>
+       
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🎓 Register</h1>
+                <p>Create your StudyTrack AI account</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">👤 Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter username">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">📧 Email</label>
+                    <input type="email" id="email" name="email" required placeholder="Enter email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">🔒 Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter password">
+                </div>
+
+                <div class="form-group">
+                    <label for="student_id">🆔 Your Student ID</label>
+                    <input type="text" 
+                           id="student_id" 
+                           name="student_id" 
+                           placeholder="Select or type your Student ID (e.g., STU0001)" 
+                           list="studentIds"
+                           required>
+                    <datalist id="studentIds">
+                        {% for sid in student_ids %}
+                        <option value="{{ sid }}">
+                        {% endfor %}
+                    </datalist>
+                    <div class="info-text">💡 This is the Student ID you'll be able to analyze</div>
+                </div>
+
+                <button type="submit" class="btn">Create Account</button>
+
+                <div class="footer-link">
+                    Already have an account? <a href="/login">Login here</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Auto-capitalize student ID input
+        document.getElementById('student_id').addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+    </script>
+</body>
+</html>

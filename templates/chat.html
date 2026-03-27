@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/chat.css">
+    <title>AI Study Coach - StudyTrack AI</title>
+       
+</head>
+
+<body>
+    <!-- Copy navbar from dashboard -->
+     <header>
+    <h1>📚 StudyTrack AI</h1>
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/input">New Analysis</a>
+         <a href="/feedback">Feedback</a>
+        <a href="/goals">Goals</a>
+        <a href="/logout">Logout</a>
+        
+
+    </nav>
+</header>
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">💬 AI Study Coach</div>
+            <div class="chat-messages" id="chatMessages">
+                {% for msg in history %}
+                <div class="message bot">
+                    <div class="message-bubble">{{ msg.message }}</div>
+                </div>
+                <div class="message user">
+                    <div class="message-bubble">{{ msg.response }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Ask me anything about studying...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Add user message to UI
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML += `<div class="message user"><div class="message-bubble">${message}</div></div>`;
+            input.value = '';
+            
+            // Send to server
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: message})
+            });
+            const data = await response.json();
+            
+            // Add bot response
+            chatMessages.innerHTML += `<div class="message bot"><div class="message-bubble">${data.response}</div></div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
+

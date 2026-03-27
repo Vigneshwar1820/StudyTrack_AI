@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/avrecm.css">
+    <title>Review Recommendation | StudyTrack AI Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        
+</head>
+
+<body>
+
+<header>
+    <h1>🔍 Review Recommendation</h1>
+    <div>
+        <a href="/admin/dashboard">← Back to Dashboard</a>
+        <a href="/admin/recommendations">All Recommendations</a>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- Student Information -->
+    <div class="student-header">
+        <h1>
+            👤 {{ rec.username }}
+            <span class="performance-indicator {{ rec.cluster_label.lower().replace(' ', '-').replace('needs-improvement', 'low').replace('average-performer', 'avg').replace('high-performer', 'high') }}">
+                {{ rec.cluster_label }}
+            </span>
+        </h1>
+        <p style="margin: 5px 0; opacity: 0.9;">📧 {{ rec.email }} | 🆔 Student ID: {{ rec.student_id }}</p>
+        <p style="margin: 5px 0; opacity: 0.9;">📅 Submitted: {{ rec.created_at[:16] }}</p>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">📚 Study Hours/Day</div>
+                <div class="info-value">{{ rec.hours_studied }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">✅ Attendance</div>
+                <div class="info-value">{{ rec.attendance }}%</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">😴 Sleep Hours</div>
+                <div class="info-value">{{ rec.sleep_hours }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">🎯 Predicted Score</div>
+                <div class="info-value">{{ "%.0f"|format(rec.predicted_score) }}%</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">📝 Previous Score</div>
+                <div class="info-value">{{ rec.previous_scores }}%</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">👨‍🏫 Tutoring/Week</div>
+                <div class="info-value">{{ rec.tutoring_sessions }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Charts -->
+    <div class="card">
+    <h2>📊 Performance Analytics</h2>
+    <div class="charts-grid">
+        <!-- Study Metrics Comparison -->
+        <div class="chart-card">
+            <h3>📊 Study Metrics vs Ideal</h3>
+            <div class="chart-container">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+
+           <!-- Score Progression (NEW - replaces gauge) -->
+    <div class="chart-card">
+        <h3>📈 Score Progression</h3>
+        <div class="chart-container">
+            <canvas id="gaugeChart"></canvas>
+        </div>
+    </div>
+
+        <!-- Category Distribution -->
+        <div class="chart-card">
+            <h3>📈 Performance Breakdown</h3>
+            <div class="chart-container">
+                <canvas id="doughnutChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations -->
+    <div class="card">
+        <h2>💡 AI-Generated Recommendations</h2>
+        <div class="recommendations-box">
+            {% if rec.recommendations %}
+                {% set rec_list = rec.recommendations|from_json %}
+                {% for recommendation in rec_list %}
+                <div class="recommendation-item">{{ recommendation }}</div>
+                {% endfor %}
+            {% else %}
+                <p>No recommendations available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Admin Response Form -->
+    <div class="card">
+        <h2>✍️ Admin Response</h2>
+        <form method="POST" class="response-form">
+            <div class="form-group">
+                <label for="admin_response">Your Response to Student:</label>
+                <textarea 
+                    id="admin_response" 
+                    name="admin_response" 
+                    placeholder="Provide additional guidance, approve recommendations, or suggest modifications..."
+                    required
+                >{{ rec.admin_response if rec.admin_response else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status:</label>
+                <select id="status" name="status" required>
+                    <option value="reviewed" {% if rec.status == 'reviewed' %}selected{% endif %}>✅ Reviewed & Approved</option>
+                    <option value="pending" {% if rec.status == 'pending' %}selected{% endif %}>⏳ Keep Pending</option>
+                    <option value="needs_revision" {% if rec.status == 'needs_revision' %}selected{% endif %}>🔄 Needs Revision</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">💾 Save Response</button>
+            <a href="/admin/recommendations" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+
+</div>
+
+<!-- REPLACE the entire <script> section in admin_view_recommendation.html with this: -->
+
+<script>
+    // Student data - MUST BE DEFINED FIRST
+    const studentData = {
+        hours_studied: parseFloat('{{ rec.hours_studied }}') || 0,
+        attendance: parseFloat('{{ rec.attendance }}') || 0,
+        sleep_hours: parseFloat('{{ rec.sleep_hours }}') || 0,
+        previous_scores: parseFloat('{{ rec.previous_scores }}') || 0,
+        tutoring_sessions: parseInt('{{ rec.tutoring_sessions }}') || 0,
+        physical_activity: parseFloat('{{ rec.physical_activity }}') || 0,
+        predicted_score: parseFloat('{{ rec.predicted_score }}') || 0
+    };
+
+    // Color scheme
+    const colors = {
+        primary: 'rgba(102, 126, 234, 0.8)',
+        primaryLight: 'rgba(102, 126, 234, 0.2)',
+        success: 'rgba(16, 185, 129, 0.8)',
+        warning: 'rgba(245, 158, 11, 0.8)',
+        danger: 'rgba(239, 68, 68, 0.8)',
+        purple: 'rgba(118, 75, 162, 0.8)'
+    };
+
+    // 1. Bar Chart - Comparison with Ideal Values
+    const comparisonCtx = document.getElementById('comparisonChart');
+    if (comparisonCtx) {
+        new Chart(comparisonCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Study Hours', 'Attendance', 'Sleep Hours', 'Tutoring'],
+                datasets: [{
+                    label: 'Current',
+                    data: [
+                        studentData.hours_studied,
+                        studentData.attendance / 10,
+                        studentData.sleep_hours,
+                        studentData.tutoring_sessions
+                    ],
+                    backgroundColor: colors.primary,
+                    borderRadius: 8
+                }, {
+                    label: 'Ideal',
+                    data: [6, 9.5, 8, 3],
+                    backgroundColor: colors.success,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Line Chart - Score Progression
+    const lineCtx = document.getElementById('gaugeChart');
+    if (lineCtx) {
+        const currentScore = studentData.previous_scores;
+        const predictedScore = studentData.predicted_score;
+        const potentialScore = Math.min(predictedScore + 10, 100);
+        
+        new Chart(lineCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Previous', 'Predicted', 'Potential'],
+                datasets: [{
+                    label: 'Score Trajectory',
+                    data: [currentScore, predictedScore, potentialScore],
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primaryLight,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 8,
+                    pointHoverRadius: 12,
+                    pointBackgroundColor: [colors.warning, colors.primary, colors.success],
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Doughnut Chart - Category Breakdown
+    const doughnutCtx = document.getElementById('doughnutChart');
+    if (doughnutCtx) {
+        new Chart(doughnutCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Study Time', 'Attendance', 'Sleep', 'Previous Score', 'Tutoring', 'Activity'],
+                datasets: [{
+                    data: [
+                        studentData.hours_studied * 10,
+                        studentData.attendance,
+                        studentData.sleep_hours * 10,
+                        studentData.previous_scores,
+                        studentData.tutoring_sessions * 15,
+                        studentData.physical_activity * 10
+                    ],
+                    backgroundColor: [
+                        colors.primary,
+                        colors.success,
+                        colors.warning,
+                        colors.purple,
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(236, 72, 153, 0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

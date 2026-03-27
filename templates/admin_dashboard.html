@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/adashbd.css">
+    <title>Admin Dashboard | StudyTrack AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+</head>
+
+<body>
+
+<header>
+    <h1>📊 Admin Dashboard</h1>
+    <nav>
+        <a href="/admin/recommendations">📨 Recommendations</a>
+        <a href="/admin/analytics">📊 Analytics</a>
+        <a href="/input">🔍 Analyze Student</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Statistics Overview -->
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-label">Total Students</div>
+                    <div class="stat-value">{{ stats.total_students }}</div>
+                </div>
+                <div class="stat-icon">👥</div>
+            </div>
+        </div>
+
+        <div class="stat-card success">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-label">Total Analyses</div>
+                    <div class="stat-value">{{ stats.total_analyses }}</div>
+                </div>
+                <div class="stat-icon">📊</div>
+            </div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-label">Pending Reviews</div>
+                    <div class="stat-value">{{ stats.pending_recommendations }}</div>
+                </div>
+                <div class="stat-icon">⏳</div>
+            </div>
+        </div>
+
+        <div class="stat-card danger">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-label">Avg Predicted Score</div>
+                    <div class="stat-value">{{ "%.0f"|format(stats.avg_predicted_score) }}%</div>
+                </div>
+                <div class="stat-icon">🎯</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <h2>⚡ Quick Actions</h2>
+        <div class="quick-actions">
+            <a href="/admin/recommendations" class="action-card">
+                <div class="icon">📨</div>
+                <div class="label">Review Recommendations</div>
+                {% if stats.pending_recommendations > 0 %}
+                <div style="margin-top: 10px; font-size: 0.9em;">{{ stats.pending_recommendations }} Pending</div>
+                {% endif %}
+            </a>
+            <a href="/admin/analytics" class="action-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <div class="icon">📊</div>
+                <div class="label">View Analytics</div>
+            </a>
+            <a href="/input" class="action-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <div class="icon">🔍</div>
+                <div class="label">Analyze Student</div>
+                <div style="margin-top: 10px; font-size: 0.9em;">Run New Analysis</div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Pending Recommendations -->
+    <div class="card">
+        <h2>⏳ Pending Recommendations ({{ pending|length }})</h2>
+
+        {% if pending %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Student ID</th>
+                    <th>Performance</th>
+                    <th>Predicted Score</th>
+                    <th>Submitted</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in pending %}
+                <tr>
+                    <td><strong>{{ rec.username }}</strong></td>
+                    <td>{{ rec.student_id }}</td>
+                    <td>
+                        {% if rec.cluster_label == 'High Performer' %}
+                            <span class="badge high">{{ rec.cluster_label }}</span>
+                        {% elif rec.cluster_label == 'Average Performer' %}
+                            <span class="badge avg">{{ rec.cluster_label }}</span>
+                        {% else %}
+                            <span class="badge low">{{ rec.cluster_label }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ "%.0f"|format(rec.predicted_score) }}%</strong></td>
+                    <td>{{ rec.created_at[:16] }}</td>
+                    <td>
+                        <a href="/admin/recommendation/{{ rec.id }}" class="btn btn-primary">
+                            Review →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            ✅ No pending recommendations! All caught up.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Students List -->
+    <div class="card" id="students">
+        <h2>👥 Registered Students ({{ students|length }})</h2>
+
+        {% if students %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Analyses Count</th>
+                    <th>Avg Score</th>
+                    <th>Joined</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td><strong>{{ student.username }}</strong></td>
+                    <td>{{ student.email }}</td>
+                    <td>{{ student.analysis_count }}</td>
+                    <td>
+                        {% if student.avg_score %}
+                            {{ "%.0f"|format(student.avg_score) }}%
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>{{ student.created_at[:10] }}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            <a href="/admin/student/{{ student.id }}" class="btn btn-primary">
+                                👤 View Profile
+                            </a>
+                            <form method="POST" action="/admin/student/{{ student.id }}/delete" 
+                                  onsubmit="return confirmDelete('{{ student.username|safe }}');" 
+                                  style="display: inline; margin: 0;">
+                                <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            No students registered yet.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function confirmDelete(username) {
+        return confirm('WARNING: Delete student "' + username + '" and ALL their data?\n\nThis will permanently delete:\n- All analyses\n- All recommendations\n- All goals\n- All chat history\n\nThis action CANNOT be undone!');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const studentsLinks = document.querySelectorAll('a[href="#students"]');
+        studentsLinks.forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.getElementById('students').scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

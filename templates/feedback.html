@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/feedback.css">
+    <title>Analysis Results | StudyTrack AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        
+</head>
+
+<body>
+
+<header class="{{ 'admin-header' if is_admin else 'student-header' }}">
+    <h1>📊 Analysis Results</h1>
+    <nav>
+        {% if is_admin %}
+            <a href="/admin/dashboard">← Admin Dashboard</a>
+            <a href="/input">New Analysis</a>
+        {% else %}
+            <a href="/dashboard">← Dashboard</a>
+            <a href="/my_recommendations">My Recommendations</a>
+        {% endif %}
+    </nav>
+</header>
+
+<div class="container">
+<div class="students-header">
+
+    <div class="students-header-top">
+        <div class="students-left">
+           <h1>
+            👤 {{ username }}
+            <span class="performance-indicator {{ cluster_label.lower().replace(' ', '-').replace('needs-improvement', 'low').replace('average-performer', 'avg').replace('high-performer', 'high') }}">
+                {{ cluster_label }}
+            </span>
+        </h1>
+
+        <div class="student-meta">
+            📧 {{ email }} &nbsp; | &nbsp; 🆔 {{ student_id }}
+        </div>
+        </div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-item">
+            <span>📚 Study Hours/Day</span>
+            <strong>{{ hours_studied }}</strong>
+        </div>
+        <div class="info-item">
+            <span>✅ Attendance</span>
+            <strong>{{ attendance }}%</strong>
+        </div>
+        <div class="info-item">
+            <span>😴 Sleep Hours</span>
+            <strong>{{ sleep_hours }}</strong>
+        </div>
+        <div class="info-item">
+            <span>🎯 Predicted Score</span>
+            <strong>{{ "%.0f"|format(predicted_score) }}%</strong>
+        </div>
+        <div class="info-item">
+            <span>📝 Previous Score</span>
+            <strong>{{ previous_scores }}%</strong>
+        </div>
+        <div class="info-item">
+            <span>👨‍🏫 Tutoring/Week</span>
+            <strong>{{ tutoring_sessions }}</strong>
+        </div>
+    </div>
+
+</div>
+
+    
+
+    <!-- Performance Charts -->
+    <div class="result-card">
+        <h2 style="color: #333; margin-bottom: 25px;">📊 Performance Analytics</h2>
+        <div class="charts-grid">
+            <!-- Study Metrics Comparison -->
+            <div class="chart-card">
+                <h3>📊 Study Metrics vs Ideal</h3>
+                <div class="chart-container">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Score Progression -->
+            <div class="chart-card">
+                <h3>📈 Score Progression</h3>
+                <div class="chart-container">
+                    <canvas id="scoreProgressionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Category Distribution -->
+            <div class="chart-card">
+                <h3>📈 Performance Breakdown</h3>
+                <div class="chart-container">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations -->
+    <div class="recommendations-card">
+        <h2>{{ recommendations.icon }} {{ recommendations.title }}</h2>
+        
+        <div class="rec-description">
+            {{ recommendations.description }}
+        </div>
+
+        <ul class="rec-list">
+            {% for rec in recommendations.recommendations %}
+            <li class="rec-item">
+                <span class="rec-icon">✓</span>
+                <span class="rec-text">{{ rec }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Status Message -->
+    {% if is_admin %}
+        <div class="admin-note">
+            <strong>ℹ️ Admin Note:</strong> This analysis has been automatically added to analytics with 'reviewed' status.
+        </div>
+    {% else %}
+        <div class="student-note">
+            <strong>📬 Your recommendations have been sent to the admin for review!</strong>
+            <p>You'll be notified once the admin responds. Check "My Recommendations" to view admin feedback.</p>
+        </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="actions">
+        {% if is_admin %}
+            <a href="/admin/dashboard" class="btn btn-primary">
+                🏠 Back to Admin Dashboard
+            </a>
+            <a href="/input" class="btn btn-secondary">
+                🔄 Analyze Another Student
+            </a>
+            <a href="/admin/analytics" class="btn btn-info">
+                📊 View All Analytics
+            </a>
+        {% else %}
+            <a href="/dashboard" class="btn btn-primary">
+                🏠 Back to Dashboard
+            </a>
+            <a href="/input" class="btn btn-secondary">
+                🔄 New Analysis
+            </a>
+            <a href="/my_recommendations" class="btn btn-info">
+                📬 View Admin Responses
+            </a>
+            <a href="/goals" class="btn btn-warning">
+                🎯 Set Goals
+            </a>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    // Student data
+    const studentData = {
+        hours_studied: parseFloat('{{ hours_studied }}') || 0,
+        attendance: parseFloat('{{ attendance }}') || 0,
+        sleep_hours: parseFloat('{{ sleep_hours }}') || 0,
+        previous_scores: parseFloat('{{ previous_scores }}') || 0,
+        tutoring_sessions: parseInt('{{ tutoring_sessions }}') || 0,
+        physical_activity: parseFloat('{{ physical_activity }}') || 0,
+        predicted_score: parseFloat('{{ predicted_score }}') || 0
+    };
+
+    // Color scheme
+    const colors = {
+        primary: 'rgba(102, 126, 234, 0.8)',
+        primaryLight: 'rgba(102, 126, 234, 0.2)',
+        success: 'rgba(16, 185, 129, 0.8)',
+        warning: 'rgba(245, 158, 11, 0.8)',
+        danger: 'rgba(239, 68, 68, 0.8)',
+        purple: 'rgba(118, 75, 162, 0.8)',
+        blue: 'rgba(59, 130, 246, 0.8)',
+        pink: 'rgba(236, 72, 153, 0.8)'
+    };
+
+    // 1. Bar Chart - Comparison with Ideal Values
+    const comparisonCtx = document.getElementById('comparisonChart');
+    if (comparisonCtx) {
+        new Chart(comparisonCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Study Hours', 'Attendance', 'Sleep Hours', 'Tutoring'],
+                datasets: [{
+                    label: 'Current',
+                    data: [
+                        studentData.hours_studied,
+                        studentData.attendance / 10,
+                        studentData.sleep_hours,
+                        studentData.tutoring_sessions
+                    ],
+                    backgroundColor: colors.primary,
+                    borderRadius: 8
+                }, {
+                    label: 'Ideal',
+                    data: [6, 9.5, 8, 3],
+                    backgroundColor: colors.success,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10,
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Line Chart - Score Progression
+    const progressionCtx = document.getElementById('scoreProgressionChart');
+    if (progressionCtx) {
+        const currentScore = studentData.previous_scores;
+        const predictedScore = studentData.predicted_score;
+        const potentialScore = Math.min(predictedScore + 10, 100);
+        
+        new Chart(progressionCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Previous', 'Predicted', 'Potential'],
+                datasets: [{
+                    label: 'Score Trajectory',
+                    data: [currentScore, predictedScore, potentialScore],
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primaryLight,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 8,
+                    pointHoverRadius: 12,
+                    pointBackgroundColor: [colors.warning, colors.primary, colors.success],
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y.toFixed(0) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            },
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Doughnut Chart - Category Breakdown
+    const doughnutCtx = document.getElementById('doughnutChart');
+    if (doughnutCtx) {
+        new Chart(doughnutCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Study Time', 'Attendance', 'Sleep', 'Previous Score', 'Tutoring', 'Activity'],
+                datasets: [{
+                    data: [
+                        studentData.hours_studied * 10,
+                        studentData.attendance,
+                        studentData.sleep_hours * 10,
+                        studentData.previous_scores,
+                        studentData.tutoring_sessions * 15,
+                        studentData.physical_activity * 10
+                    ],
+                    backgroundColor: [
+                        colors.primary,
+                        colors.success,
+                        colors.warning,
+                        colors.purple,
+                        colors.blue,
+                        colors.pink
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                size: 11
+                            },
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/goals.css">
+    <title>My Goals | StudyTrack AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+</head>
+
+<body>
+
+<header>
+    <h1>🎯 My Goals</h1>
+    <nav>
+        <a href="/dashboard">← Dashboard</a>
+        <a href="/input">New Analysis</a>
+        <a href="/my_recommendations">Recommendations</a>
+        <a href="/chat">AI Coach</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Create Goal -->
+    <div class="card">
+        <h2>➕ Create New Goal</h2>
+
+        <form method="POST">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="goal_type">Goal Type</label>
+                    <select id="goal_type" name="goal_type" required>
+                        <option value="">-- Select Type --</option>
+                        <option value="Exam Score">🎯 Exam Score</option>
+                        <option value="Study Hours">📚 Study Hours/Day</option>
+                        <option value="Attendance">✅ Attendance %</option>
+                        <option value="Sleep Hours">😴 Sleep Hours</option>
+                        <option value="Assignments Completed">📝 Assignments</option>
+                        <option value="Other">💡 Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="target_value">Target Value</label>
+                    <input type="number" step="0.1" id="target_value" name="target_value" placeholder="e.g., 90" required>
+                </div>
+                <div class="form-group">
+                    <label for="current_value">Current Value</label>
+                    <input type="number" step="0.1" id="current_value" name="current_value" placeholder="e.g., 75" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="deadline">Target Date</label>
+                    <input type="date" id="deadline" name="deadline" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">🎯 Create Goal</button>
+        </form>
+    </div>
+
+    <!-- Goals List -->
+    <div class="card">
+        <h2>📋 Your Goals ({{ goals|length }})</h2>
+
+        {% if goals %}
+        <div class="goals-grid">
+            {% for g in goals %}
+            <div class="goal-card {{ g.status }}" id="goal-card-{{ g.id }}">
+                <!-- View Mode -->
+                <div class="goal-view" id="view-{{ g.id }}">
+                    <div class="goal-header">
+                        <div class="goal-title">{{ g.goal_type }}</div>
+                        <span class="goal-status {{ g.status }}">
+                            {% if g.status == 'completed' %}
+                                ✅ Completed
+                            {% else %}
+                                ⏳ Active
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div class="goal-progress">
+                        <div class="progress-info">
+                            <span>Progress: {{ g.current_value }} / {{ g.target_value }}</span>
+                            <span>{{ g.progress_percent }}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill {{ g.status }}" 
+                                 data-width="{{ g.progress_percent }}"
+                                 style="width: 0%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="goal-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Current</div>
+                            <div class="detail-value">{{ g.current_value }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Target</div>
+                            <div class="detail-value">{{ g.target_value }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Deadline</div>
+                            <div class="detail-value" style="font-size: 1em;">{{ g.deadline }}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Created</div>
+                            <div class="detail-value" style="font-size: 0.9em;">{{ g.created_at[:10] }}</div>
+                        </div>
+                    </div>
+
+                    {% if g.status != 'completed' %}
+                    <div class="goal-actions">
+                        <button type="button" onclick="toggleEdit('{{ g.id }}')" class="btn btn-warning">✏️ Edit</button>
+                        
+                        <form method="POST" action="/goals/{{ g.id }}/update" class="quick-update-form">
+                            <input type="number" step="0.1" name="current_value" 
+                                   value="{{ g.current_value }}" 
+                                   placeholder="Update progress" 
+                                   class="quick-update-input"
+                                   required>
+                            <button type="submit" class="btn btn-success">📈 Update</button>
+                        </form>
+                        
+                        <form method="POST" action="/goals/{{ g.id }}/delete" 
+                              onsubmit="return confirm('Are you sure you want to delete this goal?');">
+                            <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="completion-badge">
+                        <strong>🎉 Goal Achieved!</strong>
+                        <form method="POST" action="/goals/{{ g.id }}/delete" style="display: inline; margin-left: 10px;">
+                            <button type="submit" class="btn btn-danger" style="font-size: 0.8em; padding: 6px 12px;">Remove</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Edit Mode -->
+                {% if g.status != 'completed' %}
+                <div class="edit-form" id="edit-{{ g.id }}">
+                    <h3 style="margin-bottom: 20px; color: #333;">✏️ Edit Goal</h3>
+                    <form method="POST" action="/goals/{{ g.id }}/update">
+                        <div class="edit-form-grid">
+                            <div class="form-group">
+                                <label>Goal Type</label>
+                                <select name="goal_type" required>
+                                    <option value="Exam Score" {% if g.goal_type == 'Exam Score' %}selected{% endif %}>🎯 Exam Score</option>
+                                    <option value="Study Hours" {% if g.goal_type == 'Study Hours' %}selected{% endif %}>📚 Study Hours/Day</option>
+                                    <option value="Attendance" {% if g.goal_type == 'Attendance' %}selected{% endif %}>✅ Attendance %</option>
+                                    <option value="Sleep Hours" {% if g.goal_type == 'Sleep Hours' %}selected{% endif %}>😴 Sleep Hours</option>
+                                    <option value="Assignments Completed" {% if g.goal_type == 'Assignments Completed' %}selected{% endif %}>📝 Assignments</option>
+                                    <option value="Other" {% if g.goal_type == 'Other' %}selected{% endif %}>💡 Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Target Value</label>
+                                <input type="number" step="0.1" name="target_value" value="{{ g.target_value }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Current Value</label>
+                                <input type="number" step="0.1" name="current_value" value="{{ g.current_value }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Target Date</label>
+                                <input type="date" name="deadline" value="{{ g.deadline }}" required>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button type="submit" class="btn btn-success">💾 Save Changes</button>
+                            <button type="button" onclick="toggleEdit('{{ g.id }}')" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">
+            <div class="empty-icon">🎯</div>
+            <p>No goals set yet. Create your first goal above to start tracking your progress!</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function toggleEdit(goalId) {
+        const viewMode = document.getElementById('view-' + goalId);
+        const editMode = document.getElementById('edit-' + goalId);
+        const card = document.getElementById('goal-card-' + goalId);
+        
+        if (editMode && viewMode && card) {
+            if (editMode.classList.contains('active')) {
+                // Close edit mode
+                editMode.classList.remove('active');
+                viewMode.style.display = 'block';
+                card.classList.remove('editing');
+            } else {
+                // Open edit mode
+                editMode.classList.add('active');
+                viewMode.style.display = 'none';
+                card.classList.add('editing');
+            }
+        }
+    }
+
+    // Animate progress bars on page load
+    window.addEventListener('load', function() {
+        const progressBars = document.querySelectorAll('.progress-bar-fill');
+        progressBars.forEach(function(bar) {
+            const width = bar.getAttribute('data-width');
+            setTimeout(function() {
+                bar.style.width = width + '%';
+            }, 100);
+        });
+    });
+</script>
+
+</body>
+</html>

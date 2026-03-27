@@ -1,0 +1,614 @@
+{# prettier-ignore #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/aanalytic.css">
+    <title>Analytics | StudyTrack AI Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+</head>
+
+<body>
+
+<header>
+    <h1>📊 Analytics Dashboard</h1>
+    <nav>
+        <a href="/admin/dashboard">← Back to Dashboard</a>
+        <a href="/admin/recommendations">Recommendations</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if history %}
+        <!-- Statistics Summary -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Total Analyses</div>
+                <div class="stat-value">{{ history|length }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Pending Reviews</div>
+                <div class="stat-value">
+                    {{ history|selectattr('rec_status', 'equalto', 'pending')|list|length }}
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Reviewed</div>
+                <div class="stat-value">
+                    {{ history|selectattr('rec_status', 'equalto', 'reviewed')|list|length }}
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Predicted Score</div>
+                <div class="stat-value">
+                    {% set avg_score = history|map(attribute='predicted_score')|sum / history|length %}
+                    {{ "%.0f"|format(avg_score) }}%
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <!-- Performance Distribution -->
+            <div class="chart-card">
+                <h3>🎯 Performance Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Score Progression -->
+            <div class="chart-card">
+                <h3>📈 Score Progression Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Study Metrics Comparison -->
+            <div class="chart-card">
+                <h3>📊 Average Study Metrics</h3>
+                <div class="chart-container">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Attendance vs Score -->
+            <div class="chart-card">
+                <h3>📉 Attendance Impact on Scores</h3>
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Review Status Distribution -->
+            <div class="chart-card">
+                <h3>✅ Review Status Breakdown</h3>
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Study Hours Distribution -->
+            <div class="chart-card">
+                <h3>📚 Study Hours vs Performance</h3>
+                <div class="chart-container">
+                    <canvas id="studyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-section">
+            <label for="statusFilter">Filter by Status:</label>
+            <select id="statusFilter" onchange="filterTable()">
+                <option value="all">All Analyses</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="revision">In Revision</option>
+            </select>
+
+            <label for="performerFilter">Filter by Performance:</label>
+            <select id="performerFilter" onchange="filterTable()">
+                <option value="all">All Performers</option>
+                <option value="High Performer">High Performer</option>
+                <option value="Average Performer">Average Performer</option>
+                <option value="Needs Improvement">Needs Improvement</option>
+            </select>
+
+            <label for="roleFilter">Filter by Analyzer:</label>
+            <select id="roleFilter" onchange="filterTable()">
+                <option value="all">All</option>
+                <option value="admin">Admin Analyzed</option>
+                <option value="student">Student Analyzed</option>
+            </select>
+        </div>
+
+        <!-- All Analyses Table -->
+        <div class="card">
+            <h2>📋 All Student Analyses</h2>
+            <div class="table-responsive">
+                <table id="analyticsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Student ID</th>
+                            <th>Analyzer</th>
+                            <th>Study Hours</th>
+                            <th>Attendance</th>
+                            <th>Sleep</th>
+                            <th>Score</th>
+                            <th>Performance</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in history %}
+                        <tr data-status="{{ h.rec_status or 'none' }}" 
+                            data-performance="{{ h.cluster_label }}"
+                            data-role="{{ h.role }}">
+                            <td>{{ h.analysis_date[:16] }}</td>
+                            <td><strong>{{ h.student_id }}</strong></td>
+                            <td>
+                                {% if h.role == 'admin' %}
+                                    <span class="badge role-admin">👨‍💼 Admin</span>
+                                {% else %}
+                                    <span class="badge role-student">🎓 {{ h.username }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ h.hours_studied }}</td>
+                            <td>{{ h.attendance }}%</td>
+                            <td>{{ h.sleep_hours }}</td>
+                            <td><strong>{{ "%.0f"|format(h.predicted_score) }}%</strong></td>
+                            <td>
+                                {% if h.cluster_label == 'High Performer' %}
+                                    <span class="badge good">{{ h.cluster_label }}</span>
+                                {% elif h.cluster_label == 'Average Performer' %}
+                                    <span class="badge avg">{{ h.cluster_label }}</span>
+                                {% else %}
+                                    <span class="badge bad">{{ h.cluster_label }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if h.rec_status == 'pending' %}
+                                    <span class="badge status-pending">⏳ Pending</span>
+                                {% elif h.rec_status == 'reviewed' %}
+                                    <span class="badge status-reviewed">✅ Reviewed</span>
+                                {% elif h.rec_status == 'revision' %}
+                                    <span class="badge status-revision">🔄 Revision</span>
+                                {% else %}
+                                    <span class="badge">❓ No Status</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if h.rec_id %}
+                                    {% if h.rec_status == 'reviewed' and h.admin_response %}
+                                        <button class="btn btn-secondary" 
+                                                data-rec-id="{{ h.rec_id }}" 
+                                                data-student-id="{{ h.student_id }}" 
+                                                data-response="{{ h.admin_response|e }}"
+                                                onclick="viewReview(this)">
+                                            👁️ View
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-primary" 
+                                                data-rec-id="{{ h.rec_id }}" 
+                                                data-student-id="{{ h.student_id }}" 
+                                                data-username="{{ h.username }}" 
+                                                data-score="{{ h.predicted_score }}" 
+                                                data-performance="{{ h.cluster_label }}" 
+                                                data-hours="{{ h.hours_studied }}" 
+                                                data-attendance="{{ h.attendance }}" 
+                                                data-sleep="{{ h.sleep_hours }}" 
+                                                data-status="{{ h.rec_status }}" 
+                                                data-response="{{ h.admin_response|e if h.admin_response else '' }}"
+                                                onclick="openReviewModal(this)">
+                                            📝 Review
+                                        </button>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: #999;">N/A</span>
+                                {% endif %}
+                                <form method="POST" action="/admin/analysis/{{ h.id }}/delete" 
+                                      style="display: inline;" 
+                                      onsubmit="return confirm('Delete this analysis? This cannot be undone.');">
+                                    <button type="submit" class="btn btn-danger">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    {% else %}
+        <div class="card">
+            <div class="empty">
+                <div class="empty-icon">📊</div>
+                <strong>No analytics data available yet.</strong><br>
+                No analyses have been performed.
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📝 Send Review Message</h3>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        
+        <div class="analysis-details" id="analysisDetails"></div>
+
+        <form method="POST" id="reviewForm">
+            <div class="form-group">
+                <label for="status">Review Status</label>
+                <select name="status" id="status" required>
+                    <option value="reviewed">✅ Reviewed (Approved)</option>
+                    <option value="revision">🔄 Needs Revision</option>
+                    <option value="pending">⏳ Keep Pending</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="admin_response">Review Message *</label>
+                <textarea name="admin_response" id="admin_response" required placeholder="Enter your review message for the student..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">
+                📤 Send Review
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- View Review Modal -->
+<div id="viewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>👁️ Review Details</h3>
+            <button class="close-btn" onclick="closeViewModal()">&times;</button>
+        </div>
+        
+        <div class="analysis-details">
+            <p><strong>Student ID:</strong> <span id="viewStudentId"></span></p>
+            <p><strong>Status:</strong> <span class="badge status-reviewed">✅ Reviewed</span></p>
+        </div>
+
+        <div class="form-group">
+            <label>Admin Response:</label>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                <p id="viewResponse" style="margin: 0; white-space: pre-wrap;"></p>
+            </div>
+        </div>
+
+        <button class="btn btn-secondary" onclick="closeViewModal()" style="width: 100%; padding: 12px;">
+            Close
+        </button>
+    </div>
+</div>
+
+
+<script>
+
+
+var historyData = [];
+
+{% if history %}
+    {% for h in history %}
+historyData.push({
+    date: "{{ h.analysis_date[:10] if h.analysis_date else '' }}",
+    student_id: "{{ h.student_id if h.student_id else '' }}",
+    hours_studied: parseFloat({{ h.hours_studied if h.hours_studied else 0 }}) || 0,
+    attendance: parseFloat({{ h.attendance if h.attendance else 0 }}) || 0,
+    sleep_hours: parseFloat({{ h.sleep_hours if h.sleep_hours else 0 }}) || 0,
+    predicted_score: parseFloat({{ h.predicted_score if h.predicted_score else 0 }}) || 0,
+    cluster_label: "{{ h.cluster_label if h.cluster_label else 'Unknown' }}",
+    rec_status: "{{ h.rec_status if h.rec_status else 'none' }}"
+});
+    {% endfor %}
+{% endif %}
+
+const colors = {
+    primary: '#dc2626',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    purple: '#667eea',
+    blue: '#3b82f6'
+};
+
+// Chart defaults
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = "'Segoe UI', sans-serif";
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+}
+
+// 1. Performance Distribution
+const perfCtx = document.getElementById('performanceChart');
+if (perfCtx && historyData.length > 0) {
+    const perfCounts = {
+        'High Performer': historyData.filter(d => d.cluster_label === 'High Performer').length,
+        'Average Performer': historyData.filter(d => d.cluster_label === 'Average Performer').length,
+        'Needs Improvement': historyData.filter(d => d.cluster_label === 'Needs Improvement').length
+    };
+
+    new Chart(perfCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['High Performer', 'Average', 'Needs Improvement'],
+            datasets: [{
+                data: [perfCounts['High Performer'], perfCounts['Average Performer'], perfCounts['Needs Improvement']],
+                backgroundColor: [colors.success, colors.warning, colors.danger],
+                borderWidth: 3,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 13 }, padding: 15 } }
+            }
+        }
+    });
+}
+
+// 2. Score Progression
+const scoreCtx = document.getElementById('scoreChart');
+if (scoreCtx && historyData.length > 0) {
+    new Chart(scoreCtx, {
+        type: 'line',
+        data: {
+            labels: historyData.map(d => d.date),
+            datasets: [{
+                label: 'Predicted Score',
+                data: historyData.map(d => d.predicted_score),
+                borderColor: colors.primary,
+                backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 100 },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+// 3. Study Metrics
+const metricsCtx = document.getElementById('metricsChart');
+if (metricsCtx && historyData.length > 0) {
+    const avgHours = historyData.reduce((s, d) => s + d.hours_studied, 0) / historyData.length;
+    const avgAtt = historyData.reduce((s, d) => s + d.attendance, 0) / historyData.length;
+    const avgSleep = historyData.reduce((s, d) => s + d.sleep_hours, 0) / historyData.length;
+
+    new Chart(metricsCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Study Hours', 'Attendance %', 'Sleep Hours'],
+            datasets: [{
+                label: 'Average',
+                data: [avgHours, avgAtt, avgSleep],
+                backgroundColor: [colors.primary, colors.success, colors.warning],
+                borderRadius: 10
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+// 4. Attendance vs Score
+const attCtx = document.getElementById('attendanceChart');
+if (attCtx && historyData.length > 0) {
+    new Chart(attCtx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Attendance vs Score',
+                data: historyData.map(d => ({ x: d.attendance, y: d.predicted_score })),
+                backgroundColor: colors.primary,
+                pointRadius: 7
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: 'Attendance %' }, max: 100 },
+                y: { title: { display: true, text: 'Score %' }, max: 100 }
+            }
+        }
+    });
+}
+
+// 5. Review Status
+const statusCtx = document.getElementById('statusChart');
+if (statusCtx && historyData.length > 0) {
+    const statusCounts = {
+        pending: historyData.filter(d => d.rec_status === 'pending').length,
+        reviewed: historyData.filter(d => d.rec_status === 'reviewed').length,
+        revision: historyData.filter(d => d.rec_status === 'revision').length,
+        none: historyData.filter(d => d.rec_status === 'none').length
+    };
+
+    new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Pending', 'Reviewed', 'Revision', 'No Status'],
+            datasets: [{
+                data: [statusCounts.pending, statusCounts.reviewed, statusCounts.revision, statusCounts.none],
+                backgroundColor: [colors.warning, colors.success, colors.blue, '#999']
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+// 6. Study Hours Distribution
+const studyCtx = document.getElementById('studyChart');
+if (studyCtx && historyData.length > 0) {
+    const studyCounts = {};
+    historyData.forEach(d => {
+        const hours = Math.floor(d.hours_studied);
+        studyCounts[hours] = (studyCounts[hours] || 0) + 1;
+    });
+    const sortedHours = Object.keys(studyCounts).sort((a, b) => a - b);
+
+    new Chart(studyCtx, {
+        type: 'bar',
+        data: {
+            labels: sortedHours,
+            datasets: [{
+                label: 'Students',
+                data: sortedHours.map(k => studyCounts[k]),
+                backgroundColor: colors.purple,
+                borderRadius: 10
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: 'Study Hours' } },
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+        }
+    });
+}
+
+// MODAL FUNCTIONS
+function openReviewModal(button) {
+    const recId = button.dataset.recId;
+    const studentId = button.dataset.studentId;
+    const username = button.dataset.username || 'Unknown';
+    const score = parseFloat(button.dataset.score) || 0;
+    const performance = button.dataset.performance || 'Unknown';
+    const hours = button.dataset.hours || 0;
+    const attendance = button.dataset.attendance || 0;
+    const sleep = button.dataset.sleep || 0;
+    const status = button.dataset.status || 'pending';
+    const existingResponse = button.dataset.response || '';
+    
+    document.getElementById('reviewModal').classList.add('active');
+    document.getElementById('reviewForm').action = '/admin/send_review/' + recId;
+    
+    document.getElementById('analysisDetails').innerHTML = `
+        <p><strong>Student ID:</strong> ${studentId}</p>
+        <p><strong>Analyzed by:</strong> ${username}</p>
+        <p><strong>Predicted Score:</strong> ${score.toFixed(0)}%</p>
+        <p><strong>Performance:</strong> ${performance}</p>
+        <p><strong>Study Hours:</strong> ${hours} | <strong>Attendance:</strong> ${attendance}% | <strong>Sleep:</strong> ${sleep}h</p>
+    `;
+    
+    document.getElementById('status').value = status;
+    document.getElementById('admin_response').value = existingResponse;
+}
+
+function closeModal() {
+    document.getElementById('reviewModal').classList.remove('active');
+}
+
+function viewReview(button) {
+    const studentId = button.dataset.studentId || 'Unknown';
+    const response = button.dataset.response || 'No response';
+    
+    document.getElementById('viewModal').classList.add('active');
+    document.getElementById('viewStudentId').textContent = studentId;
+    document.getElementById('viewResponse').textContent = response;
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').classList.remove('active');
+}
+
+window.onclick = function(event) {
+    if (event.target.id === 'reviewModal') closeModal();
+    if (event.target.id === 'viewModal') closeViewModal();
+}
+
+function filterTable() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const performerFilter = document.getElementById('performerFilter').value;
+    const roleFilter = document.getElementById('roleFilter').value;
+    const rows = document.querySelectorAll('#analyticsTable tbody tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const status = row.dataset.status || 'none';
+        const performance = row.dataset.performance || '';
+        const role = row.dataset.role || '';
+        let showRow = true;
+
+        if (statusFilter !== 'all' && status !== statusFilter) showRow = false;
+        if (performerFilter !== 'all' && performance !== performerFilter) showRow = false;
+        if (roleFilter !== 'all' && role !== roleFilter) showRow = false;
+
+        row.style.display = showRow ? '' : 'none';
+        if (showRow) visibleCount++;
+    });
+
+    const tbody = document.querySelector('#analyticsTable tbody');
+    let noResultsRow = document.getElementById('noResultsRow');
+    
+    if (visibleCount === 0 && !noResultsRow) {
+        noResultsRow = document.createElement('tr');
+        noResultsRow.id = 'noResultsRow';
+        noResultsRow.innerHTML = '<td colspan="10" style="text-align:center;padding:20px;color:#666;">No results</td>';
+        tbody.appendChild(noResultsRow);
+    } else if (visibleCount > 0 && noResultsRow) {
+        noResultsRow.remove();
+    }
+}
+
+// EVENT LISTENERS
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        closeModal();
+        closeViewModal();
+    }
+});
+
+const reviewForm = document.getElementById('reviewForm');
+if (reviewForm) {
+    reviewForm.addEventListener('submit', function(e) {
+        const response = document.getElementById('admin_response').value.trim();
+        if (response.length < 10) {
+            e.preventDefault();
+            alert('Please enter at least 10 characters');
+            return false;
+        }
+    });
+}
+
+console.log('✓ Analytics loaded | Total:', historyData.length);
+</script>
+
+</body>
+</html>

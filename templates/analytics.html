@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/analyticgen.css">
+    <title>Analytics | StudyTrack AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+</head>
+
+<body>
+
+<header>
+    <h1>Analytics Dashboard</h1>
+    <div>
+       
+       <a href="/admin/dashboard">← Back to Dashboard</a> 
+        <a href="/input">New Analysis</a>
+    </div>
+</header>
+
+<div class="container">
+
+    {% if history %}
+        <!-- Statistics Summary -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Total Analyses</div>
+                <div class="stat-value">{{ history|length }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Study Hours</div>
+                <div class="stat-value">
+                    {% set avg_hours = history|map(attribute='hours_studied')|sum / history|length %}
+                    {{ "%.1f"|format(avg_hours) }}
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Attendance</div>
+                <div class="stat-value">
+                    {% set avg_attendance = history|map(attribute='attendance')|sum / history|length %}
+                    {{ "%.0f"|format(avg_attendance) }}%
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Avg Predicted Score</div>
+                <div class="stat-value">
+                    {% set avg_score = history|map(attribute='predicted_score')|sum / history|length %}
+                    {{ "%.0f"|format(avg_score) }}%
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Trends -->
+        <div class="card">
+            <h2> Performance History</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Student ID</th>
+                        <th>Study Hours</th>
+                        <th>Attendance</th>
+                        <th>Sleep Hours</th>
+                        <th>Predicted Score</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in history %}
+                    <tr>
+                        <td>{{ h.analysis_date[:16] }}</td>
+                        <td><strong>{{ h.student_id }}</strong></td>
+                        <td>{{ h.hours_studied }}</td>
+                        <td>{{ h.attendance }}%</td>
+                        <td>{{ h.sleep_hours }}</td>
+                        <td><strong>{{ h.predicted_score }}%</strong></td>
+                        <td>
+                            {% if h.cluster_label == 'High Performer' %}
+                                <span class="badge good">{{ h.cluster_label }}</span>
+                            {% elif h.cluster_label == 'Average Performer' %}
+                                <span class="badge avg">{{ h.cluster_label }}</span>
+                            {% else %}
+                                <span class="badge bad">{{ h.cluster_label }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Performance Distribution -->
+        <div class="card">
+            <h2> Performance Distribution</h2>
+            <div class="chart-container">
+                {% set high_count = history|selectattr('cluster_label', 'equalto', 'High Performer')|list|length %}
+                {% set avg_count = history|selectattr('cluster_label', 'equalto', 'Average Performer')|list|length %}
+                {% set low_count = history|selectattr('cluster_label', 'equalto', 'Needs Improvement')|list|length %}
+                {% set total = history|length %}
+                
+                <div class="dist-item">
+                    <div class="dist-header">
+                        <span><strong>High Performers</strong></span>
+                        <span>{{ high_count }} ({{ "%.0f"|format((high_count/total)*100) }}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill green" data-width="{{ (high_count/total)*100 }}"></div>
+                    </div>
+                </div>
+
+                <div class="dist-item">
+                    <div class="dist-header">
+                        <span><strong>Average Performers</strong></span>
+                        <span>{{ avg_count }} ({{ "%.0f"|format((avg_count/total)*100) }}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill orange" data-width="{{ (avg_count/total)*100 }}"></div>
+                    </div>
+                </div>
+
+                <div class="dist-item">
+                    <div class="dist-header">
+                        <span><strong>Needs Improvement</strong></span>
+                        <span>{{ low_count }} ({{ "%.0f"|format((low_count/total)*100) }}%)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill red" data-width="{{ (low_count/total)*100 }}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Study Metrics -->
+        <div class="card">
+            <h2>Study Metrics Overview</h2>
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <h3>Study Hours Distribution</h3>
+                    {% set min_hours = history|map(attribute='hours_studied')|min %}
+                    {% set max_hours = history|map(attribute='hours_studied')|max %}
+                    {% set avg_hours = history|map(attribute='hours_studied')|sum / history|length %}
+                    <p><strong>Minimum:</strong> {{ "%.1f"|format(min_hours) }} hours</p>
+                    <p><strong>Average:</strong> {{ "%.1f"|format(avg_hours) }} hours</p>
+                    <p><strong>Maximum:</strong> {{ "%.1f"|format(max_hours) }} hours</p>
+                </div>
+
+                <div class="metric-box">
+                    <h3>Attendance Rates</h3>
+                    {% set min_att = history|map(attribute='attendance')|min %}
+                    {% set max_att = history|map(attribute='attendance')|max %}
+                    {% set avg_att = history|map(attribute='attendance')|sum / history|length %}
+                    <p><strong>Minimum:</strong> {{ "%.0f"|format(min_att) }}%</p>
+                    <p><strong>Average:</strong> {{ "%.0f"|format(avg_att) }}%</p>
+                    <p><strong>Maximum:</strong> {{ "%.0f"|format(max_att) }}%</p>
+                </div>
+
+                <div class="metric-box">
+                    <h3>Sleep Patterns</h3>
+                    {% set min_sleep = history|map(attribute='sleep_hours')|min %}
+                    {% set max_sleep = history|map(attribute='sleep_hours')|max %}
+                    {% set avg_sleep = history|map(attribute='sleep_hours')|sum / history|length %}
+                    <p><strong>Minimum:</strong> {{ "%.1f"|format(min_sleep) }} hours</p>
+                    <p><strong>Average:</strong> {{ "%.1f"|format(avg_sleep) }} hours</p>
+                    <p><strong>Maximum:</strong> {{ "%.1f"|format(max_sleep) }} hours</p>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <div class="card">
+            <div class="empty">
+              No analytics data available yet.<br>
+                <a href="/input">Start your first analysis â†’</a>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+
+<script>
+    // Animate progress bars
+    window.addEventListener('load', function() {
+        const progressFills = document.querySelectorAll('.progress-fill');
+        progressFills.forEach(fill => {
+            const width = fill.getAttribute('data-width');
+            if (width) {
+                fill.style.width = '0%';
+                setTimeout(() => {
+                    fill.style.width = width + '%';
+                }, 300);
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

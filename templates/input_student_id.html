@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/input_student.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Analysis - StudyTrack AI</title>
+        
+</head>
+
+<body>
+    
+<header>
+    <h1>📊 Analysis</h1>
+    {% if is_admin %}
+        <a href="/admin/dashboard">← Back to Dashboard</a>
+    {% else %}
+        <a href="/dashboard">← Back to Dashboard</a>
+    {% endif %}
+</header>
+
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="header-icon">🎓</div>
+                <h1>Student Performance Analysis</h1>
+                <p>Enter Student ID for Analysis</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="/predict" id="studentForm">
+                <div class="form-group">
+                    <label for="student_id">🔍 Student ID</label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="student_id" 
+                            name="student_id" 
+                            placeholder="Enter Student ID (e.g., STU0001)" 
+                            list="studentIds"
+                            required
+                            autocomplete="off"
+                        >
+                        <span class="input-icon">📋</span>
+                    </div>
+                    <datalist id="studentIds">
+                        {% for sid in student_ids %}
+                        <option value="{{ sid }}">
+                        {% endfor %}
+                    </datalist>
+                    <div class="datalist-info">
+                        💡 Start typing to see available student IDs ({{ student_ids|length }} students in database)
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Loading student data...</p>
+                </div>
+
+                <div class="student-preview" id="studentPreview">
+                    <div class="preview-title">
+                        📊 Student Data Preview
+                    </div>
+                    <div class="preview-grid">
+                        <div class="preview-item">
+                            <div class="preview-label">📚 Study Hours/Day</div>
+                            <div class="preview-value" id="preview_hours">-</div>
+                        </div>
+                        <div class="preview-item">
+                            <div class="preview-label">✅ Attendance</div>
+                            <div class="preview-value" id="preview_attendance">-</div>
+                        </div>
+                        <div class="preview-item">
+                            <div class="preview-label">😴 Sleep Hours</div>
+                            <div class="preview-value" id="preview_sleep">-</div>
+                        </div>
+                        <div class="preview-item">
+                            <div class="preview-label">📝 Previous Score</div>
+                            <div class="preview-value" id="preview_score">-</div>
+                        </div>
+                        <div class="preview-item">
+                            <div class="preview-label">👨‍🏫 Tutoring/Week</div>
+                            <div class="preview-value" id="preview_tutoring">-</div>
+                        </div>
+                        <div class="preview-item">
+                            <div class="preview-label">⚽ Activity Hrs/Week</div>
+                            <div class="preview-value" id="preview_activity">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    🎯 Analyze Performance
+                </button>
+            </form>
+
+            <div class="info-box">
+                <h3>🚀 How It Works</h3>
+                <p>Our AI analyzes study habits using machine learning to predict exam scores and provide personalized recommendations. Simply enter a Student ID to get started!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const studentIdInput = document.getElementById('student_id');
+        const studentPreview = document.getElementById('studentPreview');
+        const loadingDiv = document.getElementById('loading');
+        const submitBtn = document.getElementById('submitBtn');
+
+        let typingTimer;
+        const doneTypingInterval = 600;
+
+        // Auto-capitalize input
+        studentIdInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(fetchStudentData, doneTypingInterval);
+        });
+
+        async function fetchStudentData() {
+            const studentId = studentIdInput.value.trim();
+            
+            if (studentId.length < 3) {
+                studentPreview.classList.remove('show');
+                return;
+            }
+
+            loadingDiv.classList.add('show');
+            studentPreview.classList.remove('show');
+
+            try {
+                const response = await fetch(`/get_student_data/${studentId}`);
+                const result = await response.json();
+
+                loadingDiv.classList.remove('show');
+
+                if (result.success) {
+                    const data = result.data;
+                    
+                    // Update preview with student data
+                    document.getElementById('preview_hours').textContent = data.hours_studied.toFixed(1);
+                    document.getElementById('preview_attendance').textContent = data.attendance.toFixed(0) + '%';
+                    document.getElementById('preview_sleep').textContent = data.sleep_hours.toFixed(1);
+                    document.getElementById('preview_score').textContent = data.previous_scores.toFixed(0) + '%';
+                    document.getElementById('preview_tutoring').textContent = data.tutoring_sessions;
+                    document.getElementById('preview_activity').textContent = data.physical_activity.toFixed(1);
+                    
+                    studentPreview.classList.add('show');
+                    submitBtn.disabled = false;
+                } else {
+                    studentPreview.classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Error fetching student data:', error);
+                loadingDiv.classList.remove('show');
+                studentPreview.classList.remove('show');
+            }
+        }
+
+        // Prevent form submission if no preview loaded
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
+            if (!studentPreview.classList.contains('show')) {
+                e.preventDefault();
+                alert('Please enter a valid Student ID from the database.');
+            }
+        });
+    </script>
+</body>
+</html>

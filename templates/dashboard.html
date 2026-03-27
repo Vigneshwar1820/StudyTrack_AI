@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="/static/css/dashbd.css">
+    <title>My Dashboard | StudyTrack AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+       
+</head>
+
+<body>
+
+<header>
+    <h1>📚 My Dashboard</h1>
+    <nav>
+        <a href="/input">🎯 New Analysis</a>
+        <a href="/feedback">💡 View Feedback</a>
+        <a href="/my_recommendations">📬 My Recommendations</a>
+        <a href="/goals">🎯 Goals</a>
+        <a href="/chat">💬 AI Coach</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Welcome -->
+    <div class="welcome-card">
+        <h2>Welcome back, {{ session.username }}! 👋</h2>
+        <p>Track your performance and get personalized recommendations powered by AI</p>
+        
+        <div class="quick-actions">
+            <a href="/input" class="action-btn">
+                <div class="icon">🎯</div>
+                <div class="label">New Analysis</div>
+            </a>
+            <a href="/feedback" class="action-btn">
+                <div class="icon">💡</div>
+                <div class="label">View Feedback</div>
+            </a>
+            <a href="/my_recommendations" class="action-btn">
+                <div class="icon">📬</div>
+                <div class="label">View Reviews</div>
+                {% if pending_count > 0 %}
+                <div style="margin-top: 8px; font-size: 0.9em;">{{ pending_count }} Pending</div>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Summary -->
+    {% if history %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">📊 Total Analyses</div>
+            <div class="stat-value">{{ history|length }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">⭐ Latest Score</div>
+            <div class="stat-value">{{ "%.0f"|format(history[0].predicted_score) }}%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">📈 Performance</div>
+            <div class="stat-value" style="font-size: 1.2em;">{{ history[0].cluster_label }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Analysis History -->
+    <div class="card">
+        <h2>📊 My Recent Analysis</h2>
+
+        {% if history %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Student ID</th>
+                    <th>Study Hours</th>
+                    <th>Attendance</th>
+                    <th>Predicted Score</th>
+                    <th>Performance</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in history %}
+                <tr>
+                    <td>{{ h.analysis_date[:16] }}</td>
+                    <td><strong>{{ h.student_id }}</strong></td>
+                    <td>{{ h.hours_studied }}</td>
+                    <td>{{ h.attendance }}%</td>
+                    <td><strong>{{ h.predicted_score }}%</strong></td>
+                    <td>
+                        {% if h.cluster_label == 'High Performer' %}
+                            <span class="badge good">{{ h.cluster_label }}</span>
+                        {% elif h.cluster_label == 'Average Performer' %}
+                            <span class="badge avg">{{ h.cluster_label }}</span>
+                        {% else %}
+                            <span class="badge bad">{{ h.cluster_label }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="/delete_analysis/{{ h.id }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this analysis?');">
+                            <button type="submit" class="btn-delete">🗑️ Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="empty">
+                <div style="font-size: 3em; margin-bottom: 15px;">📊</div>
+                No analysis done yet.<br>
+                <a href="/input">Start your first analysis →</a>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+</body>
+</html>

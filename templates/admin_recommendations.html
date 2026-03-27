@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/arecom.css">
+    <title>Manage Recommendations | StudyTrack AI Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+</head>
+
+<body>
+
+<header>
+    <h1>📨 Manage Recommendations</h1>
+    <nav>
+        <a href="/admin/dashboard">← Dashboard</a>
+        <a href="/analytics">Analytics</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Statistics -->
+    <div class="stats-row">
+        <div class="stat-box warning">
+            <div class="stat-label">⏳ Pending</div>
+            <div class="stat-value">
+                {{ recommendations|selectattr('status', 'equalto', 'pending')|list|length }}
+            </div>
+        </div>
+        <div class="stat-box success">
+            <div class="stat-label">✅ Reviewed</div>
+            <div class="stat-value">
+                {{ recommendations|selectattr('status', 'equalto', 'reviewed')|list|length }}
+            </div>
+        </div>
+        <div class="stat-box danger">
+            <div class="stat-label">🔄 Needs Revision</div>
+            <div class="stat-value">
+                {{ recommendations|selectattr('status', 'equalto', 'needs_revision')|list|length }}
+            </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">📊 Total</div>
+            <div class="stat-value">{{ recommendations|length }}</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 Search by username or student ID..." onkeyup="filterTable()">
+        </div>
+        <div class="filter-group">
+            <label>Status:</label>
+            <select id="statusFilter" onchange="filterTable()">
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="needs_revision">Needs Revision</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Performance:</label>
+            <select id="performanceFilter" onchange="filterTable()">
+                <option value="">All</option>
+                <option value="High Performer">High Performer</option>
+                <option value="Average Performer">Average Performer</option>
+                <option value="Needs Improvement">Needs Improvement</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Recommendations Table -->
+    <div class="card">
+        <h2>📋 All Recommendations</h2>
+
+        {% if recommendations %}
+        <div style="overflow-x: auto;">
+            <table id="recommendationsTable">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Email</th>
+                        <th>Student ID</th>
+                        <th>Performance</th>
+                        <th>Predicted Score</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in recommendations %}
+                    <tr data-status="{{ rec.status }}" data-performance="{{ rec.cluster_label }}" data-username="{{ rec.username }}" data-studentid="{{ rec.student_id }}">
+                        <td><strong>{{ rec.username }}</strong></td>
+                        <td>{{ rec.email }}</td>
+                        <td><strong>{{ rec.student_id }}</strong></td>
+                        <td>
+                            {% if rec.cluster_label == 'High Performer' %}
+                                <span class="badge high">{{ rec.cluster_label }}</span>
+                            {% elif rec.cluster_label == 'Average Performer' %}
+                                <span class="badge avg">{{ rec.cluster_label }}</span>
+                            {% else %}
+                                <span class="badge low">{{ rec.cluster_label }}</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ "%.0f"|format(rec.predicted_score) }}%</strong></td>
+                        <td>
+                            {% if rec.status == 'reviewed' %}
+                                <span class="badge reviewed">✅ Reviewed</span>
+                            {% elif rec.status == 'pending' %}
+                                <span class="badge pending">⏳ Pending</span>
+                            {% else %}
+                                <span class="badge needs_revision">🔄 Needs Revision</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rec.created_at[:16] }}</td>
+                        <td>
+    <div style="display: flex; gap: 5px; justify-content: center;">
+        <a href="/admin/recommendation/{{ rec.id }}" class="btn btn-primary">
+            {% if rec.status == 'pending' %}
+                📝 Review
+            {% else %}
+                👁️ View
+            {% endif %}
+        </a>
+        <form method="POST" action="/admin/recommendation/{{ rec.id }}/delete" 
+              onsubmit="return confirm('⚠️ Delete this recommendation? This cannot be undone!');" 
+              style="display: inline; margin: 0;">
+            <button type="submit" class="btn btn-danger">🗑️</button>
+        </form>
+    </div>
+</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">
+            <div class="empty-icon">📭</div>
+            <p>No recommendations submitted yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function filterTable() {
+        const searchValue = document.getElementById('searchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+        const performanceFilter = document.getElementById('performanceFilter').value;
+        const table = document.getElementById('recommendationsTable');
+        const rows = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const username = row.getAttribute('data-username').toLowerCase();
+            const studentId = row.getAttribute('data-studentid').toLowerCase();
+            const status = row.getAttribute('data-status').toLowerCase();
+            const performance = row.getAttribute('data-performance');
+
+            const matchesSearch = username.includes(searchValue) || studentId.includes(searchValue);
+            const matchesStatus = !statusFilter || status === statusFilter;
+            const matchesPerformance = !performanceFilter || performance === performanceFilter;
+
+            if (matchesSearch && matchesStatus && matchesPerformance) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    }
+</script>
+
+</body>
+</html>

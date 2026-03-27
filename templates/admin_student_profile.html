@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/astudpro.css">
+    <title>Student Profile | StudyTrack AI Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+</head>
+
+<body>
+
+<header>
+    <h1>📊 Student Profile</h1>
+    <div>
+        <a href="/admin/dashboard">← Back to Dashboard</a>
+        <a href="/admin/recommendations">All Recommendations</a>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- Student Header -->
+    <div class="student-header">
+        <h1>👤 {{ student.username }}</h1>
+        <p style="margin: 5px 0; opacity: 0.9;">📧 {{ student.email }}</p>
+        <p style="margin: 5px 0; opacity: 0.9;">📅 Joined: {{ student.created_at[:10] }}</p>
+
+        <div class="student-info">
+            <div class="info-item">
+                <div class="info-label">Total Analyses</div>
+                <div class="info-value">{{ analyses|length }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Recommendations</div>
+                <div class="info-value">{{ recommendations|length }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Avg Score</div>
+                <div class="info-value">
+                    {% if analyses %}
+                        {{ "%.0f"|format(analyses|map(attribute='predicted_score')|sum / analyses|length) }}%
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis History -->
+    <div class="card">
+        <h2>📊 Analysis History</h2>
+
+        {% if analyses %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Student ID</th>
+                    <th>Study Hours</th>
+                    <th>Attendance</th>
+                    <th>Predicted Score</th>
+                    <th>Performance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for analysis in analyses %}
+                <tr>
+                    <td>{{ analysis.analysis_date[:16] }}</td>
+                    <td><strong>{{ analysis.student_id }}</strong></td>
+                    <td>{{ analysis.hours_studied }}</td>
+                    <td>{{ analysis.attendance }}%</td>
+                    <td><strong>{{ "%.0f"|format(analysis.predicted_score) }}%</strong></td>
+                    <td>
+                        {% if analysis.cluster_label == 'High Performer' %}
+                            <span class="badge high">{{ analysis.cluster_label }}</span>
+                        {% elif analysis.cluster_label == 'Average Performer' %}
+                            <span class="badge avg">{{ analysis.cluster_label }}</span>
+                        {% else %}
+                            <span class="badge low">{{ analysis.cluster_label }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            No analysis history available.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recommendations -->
+    <div class="card">
+        <h2>💡 Recommendations</h2>
+
+        {% if recommendations %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Student ID</th>
+                    <th>Status</th>
+                    <th>Performance</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in recommendations %}
+                <tr>
+                    <td>{{ rec.created_at[:16] }}</td>
+                    <td><strong>{{ rec.student_id }}</strong></td>
+                    <td>
+                        {% if rec.status == 'reviewed' %}
+                            <span class="badge reviewed">✅ Reviewed</span>
+                        {% elif rec.status == 'pending' %}
+                            <span class="badge pending">⏳ Pending</span>
+                        {% else %}
+                            <span class="badge low">🔄 Needs Revision</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set analysis = analyses|selectattr('id', 'equalto', rec.analysis_id)|first %}
+                        {% if analysis %}
+                            {% if analysis.cluster_label == 'High Performer' %}
+                                <span class="badge high">{{ analysis.cluster_label }}</span>
+                            {% elif analysis.cluster_label == 'Average Performer' %}
+                                <span class="badge avg">{{ analysis.cluster_label }}</span>
+                            {% else %}
+                                <span class="badge low">{{ analysis.cluster_label }}</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/admin/recommendation/{{ rec.id }}" style="color: #667eea; text-decoration: none; font-weight: 600;">View →</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            No recommendations available.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+</body>
+</html>
