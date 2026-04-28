@@ -5,11 +5,10 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.x-000000?style=flat-square&logo=flask&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
-![Claude AI](https://img.shields.io/badge/Claude_API-Anthropic-D4A017?style=flat-square)
 ![Chart.js](https://img.shields.io/badge/Chart.js-FF6384?style=flat-square&logo=chartdotjs&logoColor=white)
 ![Infosys](https://img.shields.io/badge/Infosys_Springboard-Internship_6.0-007CC3?style=flat-square)
 
-**An AI-powered web application that analyzes student study habits, predicts academic performance using machine learning, and delivers personalized recommendations using the Claude API.**
+**An AI-powered ML-driven full-stack web application that analyzes student study habits, predicts academic performance using machine learning, and delivers personalized recommendations.**
 
 [Features](#-features) · [Screenshots](#-screenshots) · [Tech Stack](#%EF%B8%8F-tech-stack) · [Setup](#%EF%B8%8F-setup) · [Architecture](#%EF%B8%8F-architecture)
 
