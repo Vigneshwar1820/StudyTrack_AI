@@ -11,7 +11,7 @@
 
 **An AI-powered web application that analyzes student study habits, predicts academic performance using machine learning, and delivers personalized recommendations using the Claude API.**
 
-[Features](#-features) · [Screenshots](#-screenshots) · [Tech Stack](#-tech-stack) · [Setup](#-setup) · [Architecture](#-architecture)
+[Features](#-features) · [Screenshots](#-screenshots) · [Tech Stack](#%EF%B8%8F-tech-stack) · [Setup](#%EF%B8%8F-setup) · [Architecture](#%EF%B8%8F-architecture)
 
 </div>
 
