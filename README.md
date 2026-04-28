@@ -169,5 +169,5 @@ MIT License — feel free to use and build upon this project.
 ---
 
 <div align="center">
-Made with ❤️ by <a href="https://github.com/Vigneshwar1820">Vigneshwar T</a> · <a href="https://linkedin.com/in/YOUR_LINKEDIN">LinkedIn</a>
+Made with ❤️ by <a href="https://github.com/Vigneshwar1820">Vigneshwar T</a> · <a href="https://www.linkedin.com/in/vigneshwar18/">LinkedIn</a>
 </div>
